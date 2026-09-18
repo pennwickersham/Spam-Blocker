@@ -1,0 +1,53 @@
+<!--
+  AndroidManifest.xml changes.
+  Apply these to app/src/main/AndroidManifest.xml.
+-->
+
+<!-- 1. ADD: the SMS receiver, declared statically.
+     SMS_RECEIVED is a protected broadcast and is exempt from the Android 8+
+     implicit-broadcast restrictions, so a manifest receiver is both legal and
+     far more reliable than registering one inside a service. -->
+<receiver
+    android:name=".receiver.SmsSpamReceiver"
+    android:exported="true"
+    android:permission="android.permission.BROADCAST_SMS">
+    <intent-filter android:priority="999">
+        <action android:name="android.provider.Telephony.SMS_RECEIVED" />
+    </intent-filter>
+</receiver>
+
+<!-- 2. REMOVE from <application>: android:debuggable="true"
+     The uploaded APK is a debug build. Besides being slower and 43 MB of
+     unminified dex, debuggable builds are treated differently by some OEM
+     battery managers, which is one more reason a background service gets
+     killed. Build with `./gradlew assembleRelease` and a signing config. -->
+
+<!-- 3. REMOVE: these two permissions are declared but nothing uses them.
+     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+     There is no foreground service in the app. Extra permissions cost you
+     nothing technically but do get flagged in Play review. -->
+
+<!-- 4. REMOVE the debug-only exported activities that leaked into the manifest:
+     <activity android:name="androidx.compose.ui.tooling.PreviewActivity" android:exported="true"/>
+     <activity android:name="androidx.activity.ComponentActivity" android:exported="true"/>
+     Both come from the compose ui-tooling / ui-test-manifest dependencies. Move
+     those to debugImplementation so they never reach a release build:
+         debugImplementation("androidx.compose.ui:ui-tooling")
+         debugImplementation("androidx.compose.ui:ui-test-manifest") -->
+
+<!-- 5. KEEP as-is, these were correct:
+     <service android:name=".service.CallBlockerService"
+              android:permission="android.permission.BIND_SCREENING_SERVICE"
+              android:exported="true">
+         <intent-filter>
+             <action android:name="android.telecom.CallScreeningService"/>
+         </intent-filter>
+     </service>
+     and the BIND_NOTIFICATION_LISTENER_SERVICE declaration. -->
+
+<!-- 6. OPTIONAL, for the NEIGHBOR rule type and better SIM handling:
+     <uses-permission android:name="android.permission.READ_PHONE_NUMBERS" />
+     Lets the app read your own line number to detect neighbor-spoofed calls.
+     If you would rather not add a permission, have the user type their number
+     once in Settings; CallBlockerService.myLineNumber() already reads it from
+     SharedPreferences under the key "my_number". -->
