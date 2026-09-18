@@ -1,0 +1,53 @@
+name: Build APK
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      # No gradle-wrapper.jar is committed to this repo, so Gradle itself is
+      # provisioned here. This avoids checking a binary into the repository and
+      # is why there is no ./gradlew to run.
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+
+      - name: Build debug APK
+        run: gradle assembleDebug --stacktrace
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: spam-blocker-debug-apk
+          path: app/build/outputs/apk/debug/*.apk
+          retention-days: 30
+
+      - name: Where to look on failure
+        if: failure()
+        run: echo "Open the 'Build debug APK' step for the compiler output."
+
+# ---------------------------------------------------------------------------
+# Signed release builds
+#
+# assembleRelease is configured with minification in app/build.gradle.kts but
+# has no signing config, so it will not produce an installable artifact until
+# you add one. That needs your keystore stored as repository secrets, which you
+# should set up yourself under Settings -> Secrets and variables -> Actions.
+# Do not paste a keystore or its password into a chat, a commit, or this file.
+# ---------------------------------------------------------------------------
